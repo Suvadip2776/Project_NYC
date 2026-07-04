@@ -1,0 +1,17 @@
+# Compute/cluster config — private, never public. Lives in the working tree
+# and on the box, but not committed (contains cluster paths/accounts/hosts).
+compute/
+
+# secrets / env
+.env
+*.env
+
+# python
+__pycache__/
+*.pyc
+
+# generated / large
+data/
+outputs/
+slurm_logs/
+*.log
