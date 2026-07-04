@@ -1,0 +1,6 @@
+[submodule "OpenCharacterTraining"]
+	path = OpenCharacterTraining
+	url = https://github.com/sdananya/OpenCharacterTraining.git
+[submodule "EigenBench"]
+	path = EigenBench
+	url = https://github.com/jchang153/EigenBench.git
