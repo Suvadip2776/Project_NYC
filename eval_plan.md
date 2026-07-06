@@ -31,9 +31,9 @@ Student-specific rows (the most informative subset):
 | Student fine-tuned (OCT)  | yes (prompted)          | training + prompt compound (ceiling; check they don't conflict) |
 
 Models:
-- Student base / fine-tune: `Qwen/Qwen3.6-27B` (pre- and post-OCT)
-- Teacher: GLM 5.2
-- Reference: 3 frontier models (TBD)
+- Student base / fine-tune: `Qwen/Qwen3.6-27B` (pre- and post-OCT). Fine-tune = `sdananya/qwen3.6-27b-nycc` (merged-final).
+- Teacher: GLM-5.2 (`zai-org/GLM-5.2`)
+- Reference (3 frontier): **gpt-4.1** (OpenRouter), **gemini-2.5-pro** (OpenRouter), **claude-sonnet-4.5** (direct Anthropic API)
 
 ## Additional evaluations
 
@@ -51,11 +51,34 @@ Models:
   role-play prompt — do not give it an unfair advantage; use the same eval prompting
   as everyone else.
 
-## Open questions
+## Execution details (learned this session)
 
-- [ ] **Baseline system prompt** — what exactly goes in the "baseline" slot? Everything
-  is measured relative to it, so it must be fixed before any runs. *(Question for Suvadip.)*
-- [ ] Which **3 frontier reference models**?
-- [ ] Which **reference constitutions** for the side-effect check (project-1 anchors vs. OCT)?
+- **Scenarios: held-out, not the training prompts.** Use `kellycyy/AIRiskDilemmas` (what the
+  OCT persona matrix used); optionally add AskReddit / OpenAssistant. Evaluating on the 500 NYCC
+  training prompts is in-distribution leakage — avoid.
+- **Serving:** base + fine-tune via vLLM (fine-tune needs the **vision-weight graft**,
+  `scripts/graft_vision.py`, to be vLLM-servable; TP<=4 since kv_heads=4). Teacher GLM-5.2 via
+  vLLM needs **8xH200** (TP=8/pp=1/fp8/non-eager). Frontier via API.
+- **Prompted vs unprompted:** unprompted = no system prompt; prompted = full NYCC constitution as
+  the system prompt (identical text/placement for every model).
+- **Judges:** ideally full population (EigenBench design); pragmatic fallback = 3 frontier models
+  as judges (reliable tag emission). Note the deviation.
+- **Harness:** `scripts/gen_resp_ours.py`, `gen_resp_api.py`, `build_evaluations.py`
+  (→ EigenBench `evaluations.jsonl`), then `EigenBench/scripts/run_train.py runs/nycc_full/spec.py`
+  (BTD + EigenTrust + bootstrap). All in `nycc_repro/`.
+
+### v1 (this session) — subset preview
+6-model held-out run: base, base-prompted, fine-tune (unprompted) + 3 frontier (unprompted),
+frontier-only judges, on AIRiskDilemmas. **TODO to reach full 12:** add teacher (GLM-5.2) +
+prompted variants for fine-tune / teacher / 3 frontier; consider full-population judging.
+
+## Decisions made
+- **Baseline system prompt = none/empty.** Prompted = baseline + full NYCC constitution.
+- **3 frontier models** = gpt-4.1, gemini-2.5-pro, claude-sonnet-4.5.
+
+## Remaining open questions
+- [ ] Judges = full population or frontier-subset for the final numbers?
+- [ ] **Reference constitutions** for the side-effect check (project-1 anchors vs. OCT vs. both)?
+- [ ] Capability benchmark suite + size (MMLU/GSM8K/IFEval/TruthfulQA subset?).
 - [ ] Do eval scenarios need **images** (Qwen3.6-27B has a vision encoder) and/or
   **tool-use / MCP** and **long-context / multi-turn** coverage? *(from project notes)*
