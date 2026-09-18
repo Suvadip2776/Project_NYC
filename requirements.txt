@@ -1,0 +1,4 @@
+# Streamlit Community Cloud installs dependencies from the repository root.
+# The real list lives with the app, so this just points at it — one file to
+# maintain instead of two that drift apart.
+-r NYCC_AI/requirements.txt

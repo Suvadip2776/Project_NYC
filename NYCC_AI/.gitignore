@@ -1,0 +1,9 @@
+.env
+__pycache__/
+*.pyc
+.DS_Store
+feedback/*.json
+results/*.json
+results/*.csv
+nyc_project/
+deploy/.space/

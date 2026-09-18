@@ -1,0 +1,8 @@
+nyc_project/
+__pycache__/
+*.pyc
+.DS_Store
+.git
+.gitignore
+__MACOSX/
+logs/

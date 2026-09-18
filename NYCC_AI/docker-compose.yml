@@ -1,0 +1,65 @@
+# Quick start:
+#   cp .env.example .env   # fill in OPENROUTER_API_KEY (required) and LEGISTAR_API_TOKEN (optional)
+#   docker compose up -d master-bot
+#   open http://localhost:8503
+
+x-env-file: &env-file
+  env_file:
+    - path: .env
+      required: false   # let people build/start before .env exists; local_ai.py
+                         # returns a clear error per-request if the route's key is missing
+
+services:
+  # Optional. The CLI and UIs call OpenRouter directly, so this proxy is only
+  # needed for the internal Open WebUI route on the council VPN: start it, then
+  # set API_URL=http://server:8000/chat/qwen on the service that should use it
+  # (and add back a depends_on: server / condition: service_healthy).
+  server:
+    build: .
+    container_name: nycc-ai-server
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    <<: *env-file
+    command: uvicorn local_ai:app --host 0.0.0.0 --port 8000
+    healthcheck:
+      # No curl/wget in python:3.12-slim - use Python's own stdlib instead.
+      # Lets everything below depend on "server actually accepting requests",
+      # not just "server's container started", avoiding a first-boot race
+      # where a UI comes up before uvicorn is ready and shows a false
+      # "could not reach the model server" error.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  agent-cli:
+    build: .
+    container_name: nycc-ai-agent-cli
+    <<: *env-file
+    command: python orchestrators/agent_chatbot.py
+    stdin_open: true
+    tty: true
+
+  agent-ui:
+    build: .
+    container_name: nycc-ai-agent-ui
+    restart: unless-stopped
+    ports:
+      - "8502:8501"
+    <<: *env-file
+    command: streamlit run ui/agent_chatbot_ui.py --server.address 0.0.0.0 --server.port 8501 --server.headless true
+
+  master-bot:
+    build: .
+    container_name: nycc-ai-master-bot
+    restart: unless-stopped
+    ports:
+      - "8503:8501"
+    <<: *env-file
+    volumes:
+      # Feedback must survive container restarts/rebuilds - without this it's
+      # written to the container's ephemeral filesystem and lost on redeploy.
+      - ./feedback:/app/feedback
+    command: streamlit run "ui/NYCC_master_bot.py" --server.address 0.0.0.0 --server.port 8501 --server.headless true
